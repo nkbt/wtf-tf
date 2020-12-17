@@ -1,0 +1,538 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1024" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Terraform Workshop</title>
+
+  <meta name="description" content="Beginner Terraform (AWS) workshop, plus a bit of Github + CircleCI for automation." />
+  <meta name="author" content="Nikita Butenko" />
+
+  <link href="http://fonts.googleapis.com/css?family=Open+Sans:regular,semibold,italic,italicsemibold|PT+Sans:400,700,400italic,700italic|PT+Serif:400,700,400italic,700italic" rel="stylesheet" />
+
+  <link href="impress-demo.css" rel="stylesheet" />
+
+  <link rel="shortcut icon" href="favicon.png" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+
+  <link rel="stylesheet" href="agate.css">
+</head>
+
+<body class="impress-not-supported">
+
+
+<div class="fallback-message">
+  <p>Your browser <b>doesn't support the features required</b> by impress.js, so you are presented
+    with a simplified version of this presentation.</p>
+
+  <p>For the best experience please use the latest <b>Chrome</b>, <b>Opera</b>, <b>Safari</b> or <b>Firefox</b>
+    browser.</p>
+</div>
+
+<div id="impress" data-transition-duration="500">
+
+  <section id="title">
+    <article class="title">
+      <h1 class="try">Terraform Workshop</h1>
+      <p class="footnote">Beginner Terraform (AWS) workshop, plus a bit of Github + CircleCI for automation.</p>
+    </article>
+  </section>
+
+
+  <section id="terraform">
+    <article>
+      <h2>Terraform?</h2>
+      <p>Tool for building, changing, and versioning infrastructure.</p>
+      <p style="text-align: center"><b>Infrastructure as code</b></p>
+    </article>
+
+    <article>
+      <h2>Open-source</h2>
+      <p>Terraform is a free and open-source, written in Go</p>
+      <p><a href="https://github.com/hashicorp/terraform">https://github.com/hashicorp/terraform</a></p>
+    </article>
+
+    <article>
+      <h2>HCL</h2>
+      <p>Terraform uses its own configuration language, but you have an option to use plain JSON</p>
+      <script type="text/html" data-lang="tf">
+locals {
+  bucket_name = "my-bucket"
+}
+
+resource "aws_s3_bucket" "www" {
+  bucket = local.bucket_name
+}
+
+output "www_url" {
+  value = "http://${aws_s3_bucket.www.website_endpoint}"
+}
+      </script>
+    </article>
+
+    <article>
+      <h2>Why use HCL</h2>
+      <ul>
+        <li>✅ syntax highlight</li>
+        <li>✅ type checks</li>
+        <li>✅ inline help and suggestions</li>
+        <li>☑️ learn new language</li>
+      </ul>
+    </article>
+
+    <article>
+      <h2>Providers</h2>
+      <p>Terraform is designed to be extendable, so every service implemented as a provider</p>
+      <img src="tf-providers.png" alt="Providers" style="max-width: 55%">
+    </article>
+
+    <article>
+      <p>Providers and plugins are downloaded automatically into <b>.terraform</b> folder during <b>terraform init</b></p>
+      <img src="dot-terraform.png" alt=".terraform" style="max-width: 70%" />
+    </article>
+
+    <article>
+      <h2>Workflow</h2>
+      <ul>
+        <li>terraform init</li>
+        <li>terraform plan -out tfplan</li>
+        <li>terraform apply tfplan</li>
+        <li>...</li>
+        <li>PROFIT</li>
+      </ul>
+    </article>
+
+    <article>
+      <h2>terraform init</h2>
+      <img src="tf-init.png" alt="init" />
+    </article>
+
+    <article>
+      <h2>terraform plan</h2>
+      <img src="tf-plan.png" alt="plan" />
+    </article>
+
+    <article>
+      <h2>terraform apply</h2>
+      <img src="tf-apply.png" alt="apply" />
+    </article>
+  </section>
+
+  <section id="workspaces">
+    <article>
+      <h2>Workspaces</h2>
+      <p>Multiple workspaces to separate deployments but re-use same infrastructure config</p>
+      <ul>
+        <li>terraform workspace list</li>
+        <li>... new</li>
+        <li>... select</li>
+        <li>... delete</li>
+      </ul>
+    </article>
+
+    <article>
+      <h2>Workspaces</h2>
+      <script type="text/html" data-lang="log">
+➜ terraform workspace new nkbt
+Created and switched to workspace "nkbt"!
+
+
+➜ terraform workspace select nkbt
+
+
+➜ terraform workspace show
+nkbt
+      </script>
+    </article>
+
+    <article>
+      <h2>Using workspace name</h2>
+      <script type="text/html" data-lang="tf">
+resource "aws_s3_bucket" "www" {
+  bucket        = "${terraform.workspace}--workshop"
+  #            -> "nikita--workshop"
+  acl           = "public-read"
+}
+      </script>
+    </article>
+  </section>
+
+  <section id="modules">
+    <article>
+      <h2>Modules</h2>
+      <script type="text/html" data-lang="tf">
+module "www" {
+ source = "./deployment/www"
+
+ www_domain = "i.am.module.variable"
+}
+
+output "www_url" {
+ value = module.www.www_url
+}
+
+module "www_files" {
+  source = "hashicorp/dir/template"
+  # source = "github.com/hashicorp/example"
+  # source = "https://example.com/vpc-module.zip"
+
+  version = "0.0.5"
+}
+      </script>
+    </article>
+  </section>
+
+  <section id="state">
+    <article>
+      <h2>State</h2>
+      <p>.terraform/terraform.tfstate</p>
+      <script type="text/html" data-lang="json">
+{
+  "version": 3,
+  "serial": 1,
+  "backend": {
+    "type": "s3",
+    "config": {
+      "bucket": "nkbt--workshop--tfstate",
+      "key": "wtf.tfstate",
+      </script>
+    </article>
+
+    <article>
+      <h2>Remote states</h2>
+      <script type="text/html" data-lang="log">
+➜ terraform state pull | jq
+
+# it's no magic though!
+
+➜ aws s3 ls --recursive s3://nkbt--workshop--tfstate/
+env:/dev/wtf.tfstate
+env:/nikita/wtf.tfstate
+env:/prod/wtf.tfstate
+env:/staging/wtf.tfstate
+wtf.tfstate
+
+➜ aws s3 cp s3://nkbt--workshop--tfstate/env:/nikita/wtf.tfstate - | jq
+      </script>
+    </article>
+
+    <article>
+      <h2>Remote state</h2>
+      <script type="text/html" data-lang="json">
+{
+  "version": 4,
+  "terraform_version": "0.14.0",
+  "serial": 4,
+  "lineage": "1f204bd0-c268-32c9-2705-14a9bb4deab5",
+  "outputs": {
+    "www_url": {
+      "value": "http://nkbt--workshop--test-nikita.s3-website-ap-southeast-2.amazonaws.com",
+      "type": "string"
+    }
+  },
+  "resources": [{
+      "module": "module.www",
+      "mode": "managed",
+      "type": "aws_s3_bucket",
+      "name": "www",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "attributes": {
+            "bucket": "nkbt--workshop--test-nikita",
+            "bucket_domain_name": "nkbt--workshop--test-nikita.s3.amazonaws.com",
+      </script>
+    </article>
+  </section>
+
+  <section id="debug">
+    <article>
+      <h2>TF_LOG=TRACE</h2>
+      <script type="text/html" data-lang="log">
+➜ TF_LOG=TRACE terraform plan
+2020/12/04 13:31:03 [INFO] Terraform version: 0.14.0
+2020/12/04 13:31:03 [INFO] Go runtime version: go1.15.5
+2020/12/04 13:31:03 [INFO] CLI args: []string{"/usr/local/bin/terraform", "plan"}
+2020/12/04 13:31:03 [DEBUG] Attempting to open CLI config file: /Users/nkbt/.terraformrc
+2020/12/04 13:31:03 [DEBUG] File doesn't exist, but doesn't need to. Ignoring.
+
+-----------------------------------------------------
+2020/12/04 13:31:06 [DEBUG] [aws-sdk-go] DEBUG: Response s3/ListObjects Details:
+---[ RESPONSE ]--------------------------------------
+HTTP/1.1 200 OK
+Connection: close
+Transfer-Encoding: chunked
+Content-Type: application/xml
+Date: Fri, 04 Dec 2020 02:31:07 GMT
+Server: AmazonS3
+X-Amz-Bucket-Region: ap-southeast-2
+X-Amz-Id-2: Zs+2vPF=
+X-Amz-Request-Id: B9C
+      </script>
+    </article>
+  </section>
+
+  <section id="install">
+    <article>
+      <h2>Install</h2>
+      <script type="text/html" data-lang="log">
+# install Terraform
+➜ brew install terraform
+
+# install AWS CLI
+➜ curl "https://awscli.amazonaws.com/AWSCLIV2.pkg" -o "AWSCLIV2.pkg"
+➜ sudo installer -pkg AWSCLIV2.pkg -target /
+      </script>
+
+      <article>
+        <h2>AWS CLI profiles</h2>
+        <script type="text/html" data-lang="log">
+➜ mkdir -p ~/.aws
+
+➜ echo '
+[workshop]
+region=ap-southeast-2
+output = json
+' >> ~/.aws/config
+
+➜ echo '
+[workshop]
+aws_access_key_id =
+aws_secret_access_key =
+' >> ~/.aws/credentials
+        </script>
+      <p>Fill your aws keys</p>
+    </article>
+
+
+    <article>
+      <h2>Check AWS CLI</h2>
+      <script type="text/html" data-lang="log">
+➜ aws --profile=workshop s3 ls s3://nkbt--workshop--tfstate
+                           PRE env:/
+2020-11-27 14:42:13        156 wtf.tfstate
+      </script>
+    </article>
+  </section>
+
+  <section id="deploy-bucket">
+    <article>
+      <h2>root.tf</h2>
+      <script type="text/html" data-lang="tf">
+terraform {
+  backend "s3" {
+    bucket  = "nkbt--workshop--tfstate"
+    key     = "wtf.tfstate"
+    region  = "ap-southeast-2"
+    profile = "workshop"
+  }
+}
+
+provider "aws" {
+  region  = "ap-southeast-2"
+  profile = "workshop"
+}
+      </script>
+    </article>
+
+    <article>
+      <h2>www/bucket.tf</h2>
+      <script type="text/html" data-lang="tf">
+resource "aws_s3_bucket" "www" {
+  bucket        = "nkbt--workshop--test-${terraform.workspace}"
+  acl           = "public-read"
+  force_destroy = true
+}
+      </script>
+    </article>
+
+    <article>
+      <h2>www/policy.tf</h2>
+      <script type="text/html" data-lang="tf">
+data "aws_iam_policy_document" "www_policy_doc" {
+  statement {
+    actions = ["s3:GetObject"]
+    principals {
+      identifiers = ["*"]
+      type        = "AWS"
+    }
+    resources = [
+      "arn:aws:s3:::nkbt--workshop--test-${terraform.workspace}/*"
+    ]
+  }
+}
+
+resource "aws_s3_bucket_policy" "www_policy" {
+  bucket = aws_s3_bucket.www.id
+  policy = data.aws_iam_policy_document.www_policy_doc.json
+}
+      </script>
+    </article>
+
+    <article>
+      <h2>root.tf</h2>
+      <script type="text/html" data-lang="tf">
+# ... include module
+module "www" {
+  source = "./www"
+}
+      </script>
+    </article>
+  </section>
+
+  <section id="deploy-website">
+    <article>
+      <h2>www/bucket.tf</h2>
+      <script type="text/html" data-lang="tf">
+resource "aws_s3_bucket" "www" {
+  # ...
+
+  website {
+    index_document = "index.html"
+    error_document = "error.html"
+  }
+}
+
+output "www_url" {
+  value = "http://${aws_s3_bucket.www.website_endpoint}"
+}
+      </script>
+    </article>
+
+    <article>
+      <h2>src/index.html.tmpl</h2>
+      <script type="text/html" data-lang="html">
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>${www_title}</title>
+  </head>
+  <body>
+    <h1>${hello_world}</h1>
+  </body>
+</html>
+      </script>
+    </article>
+
+    <article>
+      <h2>src/error.html.tmpl</h2>
+      <script type="text/html" data-lang="html">
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Error - ${www_title}</title>
+  </head>
+  <body>
+    <h1>Oops, something went wrong!</h1>
+    <p>Try going <a href="/">Home</a> instead</p>
+  </body>
+</html>
+      </script>
+    </article>
+
+    <article>
+      <h2>www/files.tf</h2>
+      <script type="text/html" data-lang="tf">
+module "www_files" {
+  source   = "hashicorp/dir/template"
+  base_dir = "${path.root}/src"
+  template_vars = {
+    www_title   = "Terraform workshop"
+    hello_world = "Hello, World!"
+  }
+}
+
+resource "aws_s3_bucket_object" "www_files" {
+  for_each = module.www_files.files
+
+  bucket       = aws_s3_bucket.www.id
+  key          = each.key
+  content_type = each.value.content_type
+  content      = each.value.content
+
+  etag = each.value.digests.md5
+}
+      </script>
+    </article>
+
+    <article>
+      <h2>root.tf</h2>
+      <script type="text/html" data-lang="tf">
+# ... add global output to see after `tf apply`
+output "www_url" {
+  value = module.www.www_url
+}
+      </script>
+    </article>
+
+
+    <article>
+      <h2>Deploy</h2>
+      <script type="text/html" data-lang="log">
+➜ terraform workspace new $USER
+
+➜ terraform init
+
+➜ terraform plan -out tfplan
+
+➜ terraform apply tfplan
+
+➜ open "http://nkbt--workshop--test-$USER.s3-website-ap-southeast-2.amazonaws.com"
+
+➜ open "http://nkbt--workshop--test-$USER.s3-website-ap-southeast-2.amazonaws.com/404"
+      </script>
+    </article>
+
+    <article>
+      <h2>Hello World!</h2>
+      <img src="hello-world.png">
+    </article>
+
+    <article>
+      <h2>Error Page</h2>
+      <img src="404.png">
+    </article>
+  </section>
+
+
+  <section id="demo">
+    <article>
+      <h2>CI/CD Demo</h2>
+      <p style="text-align: center">...</p>
+    </article>
+  </section>
+
+
+  <section id="thanks">
+    <article>
+      <h1>Thank you</h1>
+      <img src="thanks.jpeg" />
+    </article>
+  </section>
+
+
+  <section id="overview">
+    <article data-scale="15" data-x="5000" data-y="4000">
+    </article>
+  </section>
+</div>
+
+<ul id="nav">
+</ul>
+
+
+
+<script type="text/javascript" src="impress.js"></script>
+<script type="text/javascript" src="highlight.js"></script>
+<script type="text/javascript" src="app.js"></script>
+<script type="text/javascript" src="terraform.js"></script>
+<script type="text/javascript">
+  hljs.registerLanguage('terraform', window.hljsDefineTerraform);
+  hljs.initHighlightingOnLoad();
+</script>
+</body>
+</html>
