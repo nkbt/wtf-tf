@@ -65,14 +65,14 @@ jobs:
 
 filters-dev: &filters-dev
   branches:
-    ignore: /^main/
+    ignore: /^master/
   tags:
     ignore: /.*/
 
 
 filters-staging: &filters-staging
   branches:
-    only: /^main$/
+    only: /^master$/
   tags:
     ignore: /.*/
 
