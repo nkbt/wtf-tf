@@ -3,7 +3,7 @@ module "www_files" {
   base_dir = "${path.module}/src"
   template_vars = {
     www_title   = "Terraform workshop"
-    hello_world = "Hello, World!"
+    hello_world = "Hello, World!!!"
   }
 }
 
