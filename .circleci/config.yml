@@ -1,0 +1,138 @@
+version: 2.1
+
+
+
+tf_defaults: &tf_defaults
+  parameters:
+    tf_workspace:
+      type: string
+  working_directory: ~/app
+  docker:
+    - image: hashicorp/terraform:light
+  environment:
+    TF_IN_AUTOMATION: "true"
+
+
+jobs:
+  plan:
+    <<: *tf_defaults
+    steps:
+      - checkout
+      - run: terraform init -input=false
+      - run: terraform workspace select << parameters.tf_workspace >>
+      - run: terraform plan -out tf-apply.out
+      - store_artifacts:
+          path: tf-apply.out
+          destination: tf-apply.out
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
+
+
+  apply:
+    <<: *tf_defaults
+    steps:
+      - attach_workspace:
+          at: .
+      - run: terraform apply -auto-approve tf-apply.out
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
+      - run: echo $(terraform output -json) > tf-outputs.json
+      - store_artifacts:
+          path: tf-outputs.json
+          destination: tf-outputs.json
+
+
+  auto-deploy:
+    <<: *tf_defaults
+    steps:
+      - checkout
+      - run: terraform init -input=false
+      - run: terraform workspace select << parameters.tf_workspace >>
+      - run: terraform plan -out tf-apply.out
+      - store_artifacts:
+          path: tf-apply.out
+          destination: tf-apply.out
+      - run: terraform apply -auto-approve tf-apply.out
+      - run: echo $(terraform output -json) > tf-outputs.json
+      - store_artifacts:
+          path: tf-outputs.json
+          destination: tf-outputs.json
+
+
+filters-dev: &filters-dev
+  branches:
+    ignore: /^main/
+  tags:
+    ignore: /.*/
+
+
+filters-staging: &filters-staging
+  branches:
+    only: /^main$/
+  tags:
+    ignore: /.*/
+
+
+filters-prod: &filters-prod
+  branches:
+    ignore: /.*/
+  tags:
+    only: /^v\d+\.\d+\.\d+$/
+
+
+workflows:
+  version: 2
+  dev:
+    jobs:
+      - auto-deploy:
+          tf_workspace: dev
+          filters:
+            <<: *filters-dev
+
+
+  staging:
+    jobs:
+      - plan:
+          tf_workspace: staging
+          filters:
+            <<: *filters-staging
+
+      - hold-apply:
+          type: approval
+          requires:
+            - plan
+          filters:
+            <<: *filters-staging
+
+      - apply:
+          tf_workspace: staging
+          requires:
+            - hold-apply
+          filters:
+            <<: *filters-staging
+
+
+  prod:
+    jobs:
+      - plan:
+          tf_workspace: prod
+          filters:
+            <<: *filters-prod
+
+      - hold-apply:
+          type: approval
+          requires:
+            - plan
+          filters:
+            <<: *filters-prod
+
+      - apply:
+          tf_workspace: prod
+          requires:
+            - hold-apply
+          filters:
+            <<: *filters-prod
