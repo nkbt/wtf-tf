@@ -15,7 +15,7 @@ terraform {
     bucket  = "nkbt--workshop--tfstate"
     key     = "wtf.tfstate"
     region  = "ap-southeast-2"
-    profile = "tf"
+    profile = "workshop"
   }
 }
 
